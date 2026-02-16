@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Loading...</title>
+
+<meta name="description" content="">
+<meta property="og:type" content="video.movie">
+<meta property="og:title" content="">
+<meta property="og:description" content="">
+<meta property="og:image" content="">
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+<style>
+body{
+  margin:0;
+  font-family:'Inter',sans-serif;
+  background:#0f0f0f;
+  color:#fff;
+}
+
+.hero{
+  position:relative;
+  height:75vh;
+  background-size:cover;
+  background-position:center;
+  display:flex;
+  align-items:flex-end;
+}
+
+.hero-overlay{
+  background:linear-gradient(to top,#0f0f0f 20%,transparent 70%);
+  width:100%;
+  padding:50px;
+}
+
+.hero-content{
+  display:flex;
+  gap:30px;
+  align-items:flex-end;
+  max-width:1200px;
+  margin:auto;
+}
+
+.poster img{
+  width:220px;
+  border-radius:10px;
+  box-shadow:0 15px 40px rgba(0,0,0,0.8);
+}
+
+.details{
+  flex:1;
+}
+
+.details h1{
+  font-size:42px;
+  margin:0;
+}
+
+.meta{
+  margin:10px 0;
+  color:#ccc;
+}
+
+.play-btn{
+  display:inline-block;
+  margin-top:20px;
+  padding:12px 20px;
+  background:#f5c518;
+  color:#000;
+  font-weight:600;
+  border-radius:6px;
+  cursor:pointer;
+}
+
+.section{
+  max-width:1200px;
+  margin:40px auto;
+  padding:0 40px;
+}
+
+.info-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+  gap:15px;
+}
+
+.info-box{
+  background:#1c1c1c;
+  padding:15px;
+  border-radius:8px;
+}
+
+#trailerModal{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.9);
+  display:none;
+  justify-content:center;
+  align-items:center;
+  z-index:999;
+}
+#trailerModal iframe{
+  width:80%;
+  height:70%;
+}
+#closeBtn{
+  position:absolute;
+  top:30px;
+  right:40px;
+  font-size:30px;
+  cursor:pointer;
+}
+
+@media(max-width:768px){
+  .hero-content{flex-direction:column;align-items:flex-start;}
+  .poster img{width:160px;}
+  .details h1{font-size:28px;}
+}
+</style>
+</head>
+
+<body>
+
+<div id="hero" class="hero">
+  <div class="hero-overlay">
+    <div class="hero-content">
+      <div class="poster">
+        <img id="poster" src="">
+      </div>
+      <div class="details">
+        <h1 id="title">Loading...</h1>
+        <div id="meta" class="meta"></div>
+        <div class="play-btn" onclick="openTrailer()">▶ Watch Trailer</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h2>Overview</h2>
+  <p id="overview"></p>
+
+  <div class="info-grid">
+    <div id="rating" class="info-box"></div>
+    <div id="genre" class="info-box"></div>
+    <div id="runtime" class="info-box"></div>
+    <div id="director" class="info-box"></div>
+  </div>
+</div>
+
+<div id="trailerModal">
+  <div id="closeBtn" onclick="closeTrailer()">✖</div>
+  <iframe id="trailerFrame" src="" frameborder="0" allowfullscreen></iframe>
+</div>
+
+<script>
+const apiKey = "e0b203e42e12587b6ce507b8aa452e8c";
+const imageBase = "https://image.tmdb.org/t/p/original";
+const posterBase = "https://image.tmdb.org/t/p/w500";
+
+const pathArray = window.location.pathname.split("/");
+let movieId = pathArray[pathArray.length - 1];
+if(!movieId || movieId === "") movieId = "872585";
+
+let trailerKey = "";
+
+async function loadMovie(){
+  const res = await fetch(`https://api.themoviedb.org/3/movie/${movieId}?api_key=${apiKey}&append_to_response=credits,videos`);
+  const data = await res.json();
+
+  if(data.success === false){
+    document.body.innerHTML="<h1>Movie Not Found</h1>";
+    return;
+  }
+
+  document.title = data.title + " (" + data.release_date?.split("-")[0] + ")";
+
+  document.querySelector('meta[name="description"]').setAttribute("content", data.overview);
+  document.querySelector('meta[property="og:title"]').setAttribute("content", data.title);
+  document.querySelector('meta[property="og:description"]').setAttribute("content", data.overview);
+  document.querySelector('meta[property="og:image"]').setAttribute("content", posterBase + data.poster_path);
+
+  document.getElementById("hero").style.backgroundImage =
+    `url(${imageBase + data.backdrop_path})`;
+
+  document.getElementById("poster").src =
+    posterBase + data.poster_path;
+
+  document.getElementById("title").textContent = data.title;
+
+  document.getElementById("meta").textContent =
+    `${data.release_date?.split("-")[0]} • ${data.runtime} min • ⭐ ${data.vote_average}`;
+
+  document.getElementById("overview").textContent = data.overview;
+
+  document.getElementById("rating").innerHTML =
+    `<strong>Rating:</strong> ${data.vote_average} (${data.vote_count} votes)`;
+
+  document.getElementById("genre").innerHTML =
+    `<strong>Genres:</strong> ${data.genres.map(g=>g.name).join(", ")}`;
+
+  document.getElementById("runtime").innerHTML =
+    `<strong>Runtime:</strong> ${data.runtime} minutes`;
+
+  const director = data.credits.crew.find(c=>c.job==="Director");
+  document.getElementById("director").innerHTML =
+    `<strong>Director:</strong> ${director ? director.name : "N/A"}`;
+
+  const trailer = data.videos.results.find(v =>
+    v.type==="Trailer" && v.site==="YouTube"
+  );
+  if(trailer) trailerKey = trailer.key;
+}
+
+function openTrailer(){
+  if(!trailerKey) return alert("Trailer not available");
+  document.getElementById("trailerFrame").src =
+    `https://www.youtube.com/embed/${trailerKey}?autoplay=1`;
+  document.getElementById("trailerModal").style.display="flex";
+}
+
+function closeTrailer(){
+  document.getElementById("trailerFrame").src="";
+  document.getElementById("trailerModal").style.display="none";
+}
+
+loadMovie();
+</script>
+
+</body>
+</html>
